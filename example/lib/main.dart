@@ -8,7 +8,8 @@ late JMethodId _loge =
     Jni.getStaticMethodId(_log, 'e', '(Ljava/lang/String;Ljava/lang/String;)I');
 
 void loge(String tag, String message) {
-  Jni.callStaticIntMethod(_log, _loge, tag, message);
+  Jni.callStaticIntMethodA(
+      _log, _loge, JniArgs().addString(tag).addString(message));
 }
 
 void main() {

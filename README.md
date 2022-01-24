@@ -13,6 +13,7 @@ void main() {
   JClass log = Jni.findClass('android/util/Log');
   JMethodId loge =
     Jni.getStaticMethodId(log, 'e', '(Ljava/lang/String;Ljava/lang/String;)I');
-  Jni.callStaticIntMethod(log, loge, 'AARON', 'Hello World!');
+  Jni.callStaticIntMethodA(
+      _log, _loge, JniArgs().addString('AARON').addString('Hello World!'));
 }
 ```

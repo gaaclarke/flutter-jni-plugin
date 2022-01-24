@@ -23,6 +23,28 @@ class JMethodId {
 
 class _JMethodId extends Opaque {}
 
+// dart:ffi doesn't handle variadic functions well.  Since we don't have
+// reflection or metaprogramming we build up the list of arguments in an object
+// at runtime.
+class JniArgs {
+  Pointer<_JniArgs> pointer;
+
+  JniArgs() : pointer = Jni._newJniArgs();
+
+  void _clear() {
+    Jni._deleteJniArgs(pointer);
+    pointer = Pointer<_JniArgs>.fromAddress(0);
+  }
+
+  JniArgs addString(String string) {
+    assert(pointer.address != 0);
+    Jni._jniArgsAddString(pointer, string.toNativeUtf8());
+    return this;
+  }
+}
+
+class _JniArgs extends Opaque {}
+
 class Jni {
   static final DynamicLibrary nativeAddLib = Platform.isAndroid
       ? DynamicLibrary.open('libflutter_jni.so')
@@ -65,18 +87,28 @@ class Jni {
       Pointer<_JMethodId> Function(Pointer<_JClass>, Pointer<Utf8>,
           Pointer<Utf8>)>('fjni_GetStaticMethodId');
 
-  // This function is hardcoded to take 2 strings as parameters.  We'd probably
-  // have to use code generation to generate all the variants we'd need since
-  // reflection isn't an option.
-  static int callStaticIntMethod(
-      JClass klass, JMethodId method, String x, String y) {
-    return _callStaticIntMethod(
-        klass.pointer, method.pointer, x.toNativeUtf8(), y.toNativeUtf8());
+  static int callStaticIntMethodA(
+      JClass klass, JMethodId method, JniArgs args) {
+    int result =
+        _callStaticIntMethodA(klass.pointer, method.pointer, args.pointer);
+    args._clear();
+    return result;
   }
 
-  static final _callStaticIntMethod = nativeAddLib.lookupFunction<
-      Int32 Function(
-          Pointer<_JClass>, Pointer<_JMethodId>, Pointer<Utf8>, Pointer<Utf8>),
-      int Function(Pointer<_JClass>, Pointer<_JMethodId>, Pointer<Utf8>,
-          Pointer<Utf8>)>('fjni_CallStaticIntMethod');
+  static final _callStaticIntMethodA = nativeAddLib.lookupFunction<
+      Int32 Function(Pointer<_JClass>, Pointer<_JMethodId>, Pointer<_JniArgs>),
+      int Function(Pointer<_JClass>, Pointer<_JMethodId>,
+          Pointer<_JniArgs>)>('fjni_CallStaticIntMethodA');
+
+  static final _newJniArgs = nativeAddLib.lookupFunction<
+      Pointer<_JniArgs> Function(),
+      Pointer<_JniArgs> Function()>('fjni_NewJniArgs');
+
+  static final _jniArgsAddString = nativeAddLib.lookupFunction<
+      Void Function(Pointer<_JniArgs>, Pointer<Utf8>),
+      void Function(Pointer<_JniArgs>, Pointer<Utf8>)>('fjni_JniArgsAddString');
+
+  static final _deleteJniArgs = nativeAddLib.lookupFunction<
+      Void Function(Pointer<_JniArgs>),
+      void Function(Pointer<_JniArgs>)>('fjni_DeleteJniArgs');
 }
